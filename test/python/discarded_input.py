@@ -1,0 +1,6 @@
+print(input())
+print(input())
+input()
+input()
+print(input())
+print(input())

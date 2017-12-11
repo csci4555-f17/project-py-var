@@ -1,0 +1,5 @@
+print(True == True)
+print(True == 1)
+print(True == 1 == 0)
+print(1 is True)
+print(1 is 1)

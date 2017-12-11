@@ -1,0 +1,38 @@
+#!/bin/bash
+
+cd "$(dirname "$0")"
+
+TEST_EXEC_DIR='executable'
+INPUT_DIR='inputs'
+TEST_OUT_DIR='test_outputs'
+EXP_OUT_DIR='expected_outputs'
+
+bash -c "rm -rf $TEST_EXEC_DIR"
+bash -c "rm -rf $TEST_OUT_DIR/*"
+bash -c "rm -rf $EXP_OUT_DIR/*"
+
+bash compile_tests.sh > /dev/null
+bash generate_expected_outputs.sh > /dev/null
+
+for test in `ls $TEST_EXEC_DIR`; do
+
+  for test_file in `ls $INPUT_DIR/$test`; do
+
+    printf "$test - $test_file: "
+
+    test_loc="$test/$test_file"
+
+    mkdir -p "$TEST_OUT_DIR/$test"
+
+    bash -c "'$TEST_EXEC_DIR/$test' < '$INPUT_DIR/$test_loc' > '$TEST_OUT_DIR/$test_loc'"
+
+    diff=`diff "$EXP_OUT_DIR/$test_loc" "$TEST_OUT_DIR/$test_loc"`
+    if [ "$diff" == "" ]; then
+      echo "success!"
+    else
+      echo "FAILURE?!"
+    fi
+
+  done
+
+done

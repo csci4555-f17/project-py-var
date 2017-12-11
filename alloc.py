@@ -1,0 +1,181 @@
+
+from collections import Counter, defaultdict
+
+import constants as C
+import extendedast as ext
+import x86ir as x86
+
+
+NOT_MEM = -1
+
+
+def allocate_memory(statements, func_args=None):
+    success = False
+    while not success:
+        graph = interference_graph(statements)
+        colors = color_names(graph, func_args)
+        statements, success = try_transform(statements, colors)
+    # print(colors)
+    stack_size = max(0, 4*(max(colors.values()) - C.N_REGS + 1))
+    return statements, stack_size
+
+
+def try_transform(statements, colors):
+    new_statements = []
+    for i, s in enumerate(statements):
+        if isinstance(s, x86.If):
+
+            tcol = colors.get(s.test, NOT_MEM)
+            test = s.test if tcol is NOT_MEM else get_mem(tcol)
+
+            body, b_success = try_transform(s.body, colors)
+            orelse, o_success = try_transform(s.orelse, colors)
+            if not b_success:
+                statements[i] = x86.If(s.test, body, s.orelse)
+            elif not o_success:
+                statements[i] = x86.If(s.test, s.body, orelse)
+            else:
+                new_statements.append(x86.If(test, body, orelse))
+                continue  # avoid returning
+            return statements, False
+
+        else:
+            arg_colors = [colors.get(a, NOT_MEM) for a in s.args]
+            if sum((n < -1 or n >= C.N_REGS) for n in arg_colors) >= 2:
+                # handle multi-spilling (x86 only allows 1 mem-access / instr.)
+                tmp = _new_unspillable()
+                spill_index = next(
+                    i for i, n in enumerate(arg_colors) if n >= C.N_REGS
+                )
+
+                # old_s = repr(s)
+
+                spilled_arg = s.args[spill_index]
+                statements.insert(i, x86.Mov(spilled_arg, tmp))  # save spilled
+                s.args[spill_index] = tmp  # swap spilled with saved value
+
+                # print("spill-handled {} -> {}; {}".format(
+                #     old_s, repr(statements[i]), repr(s)
+                # ))
+
+                return statements, False
+            else:
+                s = x86.X86Instruction.copy(s)
+                s.args = [
+                    # if not variable, keep same, else get_mem
+                    s.args[i] if c is NOT_MEM else get_mem(c)
+                    for i, c in enumerate(arg_colors)
+                ]
+                new_statements.append(s)
+    return new_statements, True
+
+
+def get_mem(color):
+    return "{}(%ebp)".format(-4*(color)) if color < -1 else (
+            C.REGS[color] if color < C.N_REGS else
+            "{}(%ebp)".format(-4*(color - C.N_REGS + 1))
+    )
+
+
+def color_names(graph, func_args=None):
+    saturations = Counter({n: 0 for n in graph if isinstance(n, ext.Name)})
+    for r in C.CSAVE_REGS:
+        saturations.update(graph[r])
+
+    colors = defaultdict(lambda: NOT_MEM)
+    for i, r in enumerate(C.REGS):
+        colors[r] = i
+
+    func_args = func_args or []
+    for i, name in enumerate(func_args):
+        arg = ext.Name(name)
+        colors[arg] = - i - 2
+        update_uncolored_neighbors(saturations, colors, graph, arg)
+        saturations[arg] = -1
+
+    while saturations:
+        common = saturations.most_common()
+
+        name, sat = common[0]
+        for nnext, snext in common:
+            if sat > snext:
+                break
+            if name.max_color >= nnext.max_color:
+                # switch to the more limited name
+                name, sat = nnext, snext
+
+        if sat < 0:
+            break
+
+        if colors[name] is NOT_MEM:
+            color = best_color(name, colors, graph)
+            colors[name] = color
+            update_uncolored_neighbors(saturations, colors, graph, name)
+
+        saturations[name] = -1  # remove saturations[name]
+
+    return colors
+
+
+def update_uncolored_neighbors(saturations, colors, graph, name):
+    saturations.update((
+        n for n in graph[name]
+        if isinstance(n, ext.Name) and colors[n] is NOT_MEM
+    ))
+
+
+def best_color(name, colors, graph):
+    color = 0
+    while color in (colors[n] for n in graph[name]):
+        color += 1
+    return color
+
+
+def interference_graph(statements):
+    graph = defaultdict(set)
+    for stmt, l_after in iter_livenesses(statements):
+        if isinstance(stmt, C.INSTANTIATING_INSTRUCTIONS):
+            add_interferences(
+                graph, stmt.written_args(), l_after - set(stmt.args)
+            )
+        elif isinstance(stmt, x86.Call):
+            add_interferences(graph, C.CSAVE_REGS, l_after)
+        elif isinstance(stmt, C.MODIFYING_INSTRUCTIONS):
+            wargs = stmt.written_args()
+            add_interferences(graph, wargs, l_after - wargs)
+    return graph
+
+
+def iter_livenesses(statements, l_after=None):
+    l_after = l_after or set()
+    for stmt in reversed(statements):
+        yield stmt, l_after
+        # Calculate the previous l_after
+        # L_after(k - 1) = (L_after(k) - W(k)) U R(k)
+        if isinstance(stmt, x86.If):
+            for st, la_body in iter_livenesses(stmt.body, set(l_after)):
+                yield st, la_body
+            for st, la_orelse in iter_livenesses(stmt.orelse, set(l_after)):
+                yield st, la_orelse
+            l_after = la_body | la_orelse
+            if isinstance(stmt.test, ext.Name):
+                l_after.add(stmt.test)
+        else:
+            l_after -= stmt.written_args()
+            l_after |= stmt.read_args()
+
+
+def add_interferences(graph, wargs, interfering):
+    for node in wargs:
+        graph[node] |= interfering
+        for n in interfering:
+            graph[n].add(node)
+
+
+def _new_unspillable():
+    _new_unspillable.ctr += 1
+    # alcu - alloc unspillable
+    return ext.Name('#alcu{}'.format(_new_unspillable.ctr), max_color=C.N_REGS)
+
+
+_new_unspillable.ctr = 0
