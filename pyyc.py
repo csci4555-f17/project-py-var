@@ -58,20 +58,21 @@ def modify_attr(name, func):
 pycompile = call_in_succession(
     ast.parse,
     Uniqifier().visit,
-    astor.to_source,
-    # Explicator().visit,
-    # convert_closures,
-    # modify_index(1, lambda funcs: (call_in_succession(
-    #     modify_attr('body', call_in_succession(
-    #         partial(map, flatten),
-    #         lambda lists: [s for stmts, _ in lists for s in stmts],
-    #         lambda stmts: allocate_memory(stmts, f.args),
-    #         modify_index(0, remove_ifs),
-    #         modify_index(0, remove_useless_moves)
-    #     )),
-    #     wrap_function
-    # )(f) for f in funcs)),
-    # join_program
+    # astor.to_source,
+    Explicator().visit,
+    # partial(astor.dump_tree, indentation='  ')
+    convert_closures,
+    modify_index(1, lambda funcs: (call_in_succession(
+        modify_attr('body', call_in_succession(
+            partial(map, flatten),
+            lambda lists: [s for stmts, _ in lists for s in stmts],
+            lambda stmts: allocate_memory(stmts, f.args),
+            modify_index(0, remove_ifs),
+            modify_index(0, remove_useless_moves)
+        )),
+        wrap_function
+    )(f) for f in funcs)),
+    join_program
 )
 
 if __name__ == "__main__":

@@ -17,13 +17,6 @@ def convert_Lambda(lba):
     return _blockify(lba, _new_function())
 
 
-def convert_FunctionDef(func):
-    return convert_closures(ast.copy_location(ast.Assign(
-        [ast.Name(func.name, ast.Store())],
-        ast.copy_location(ast.Lambda(func.args, func.body), func)
-    ), func))
-
-
 def convert_default(node):
     functions = []
     for field, child in ast.iter_fields(node):

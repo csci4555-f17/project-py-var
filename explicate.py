@@ -96,9 +96,16 @@ class Explicator(ast.NodeTransformer):
         ), C.T_BOOL), cmp)
 
     def visit_Lambda(self, lda):
-        self.generic_visit(lda)
+        lda = self.generic_visit(lda)
         lda.body = [ast.Return(lda.body)]
         return lda
+
+    def visit_FunctionDef(self, func):
+        func = self.generic_visit(func)
+        return ast.copy_location(ast.Assign(
+            [ast.Name(func.name, ast.Store())],
+            ast.copy_location(ast.Lambda(func.args, func.body), func)
+        ), func)
 
     def _chain_compators(self, state, op_cmp):
         chain, last = state
