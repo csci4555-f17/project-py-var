@@ -60,6 +60,8 @@ def flatten_Call(call):
         assembly.extend(stmts)
         args.append(tmp)
 
+    # print(func, args)
+
     assembly.extend(x86.Push(a) for a in reversed(args))
 
     assembly.append(caller(func))
