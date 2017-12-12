@@ -25,11 +25,6 @@ Name.ANY_COLOR = sys.maxsize
 Name.__new__.__defaults__ = (Name.ANY_COLOR,)
 
 
-class Closure(namedtuple('Closure', ['func'])):
-    def __repr__(self):
-        return self.func
-
-
 def ExAstNode(name, fields):
     class EAstNode(ast.AST):
         pass
@@ -47,6 +42,14 @@ TypeConflict = ExAstNode('TypeConflict', ['op', 'types'])
 Return = ExAstNode('Return', ['value', 'func_name'])
 
 Function = ExAstNode('Function', ['name', 'args', 'body'])
+
+
+class Closure(ExAstNode('Closure', ['func', 'free_vars'])):
+    def __repr__(self):
+        return "{}<>".format(self.func, ', '.join(map(str, self.free_vars)))
+
+    def __str__(self):
+        return self.func
 
 
 class CmpEq(ExAstNode('CmpEq', ['left', 'right', 'negated'])):

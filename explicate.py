@@ -11,6 +11,13 @@ class Explicator(ast.NodeTransformer):
     def __init__(self):
         self._free_var_ctr = 0
 
+    def visit_Module(self, module):
+        module = self.generic_visit(module)
+        return ast.copy_location(ast.Module([ast.Call(ast.Lambda(
+            ast.arguments([], ast.arg(), [], ast.arg(), [], []),
+            module.body
+        ), [], [])]), module)
+
     def visit_UnaryOp(self, uop):
         uop = self.generic_visit(uop)
 

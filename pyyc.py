@@ -9,6 +9,7 @@ import astor
 import x86ir as x86
 from uniqify import Uniqifier
 from explicate import Explicator
+from heapify import heapify_free_vars
 from closureconv import convert_closures
 from flatten import flatten
 from alloc import allocate_memory
@@ -26,6 +27,13 @@ def call_in_succession(*funcs):
             res = f(*res)
         return res
     return func
+
+
+def print_function(f):
+    print(f.name)
+    print(astor.dump_tree(f.body))
+    print()
+    return f
 
 
 def print_x86ir(x86ir):
@@ -60,9 +68,11 @@ pycompile = call_in_succession(
     Uniqifier().visit,
     # astor.to_source,
     Explicator().visit,
+    heapify_free_vars,
     # partial(astor.dump_tree, indentation='  ')
     convert_closures,
     modify_index(1, lambda funcs: (call_in_succession(
+        # print_function,
         modify_attr('body', call_in_succession(
             partial(map, flatten),
             lambda lists: [s for stmts, _ in lists for s in stmts],

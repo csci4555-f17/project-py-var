@@ -52,13 +52,7 @@ def flatten_Call(call):
         assembly = []
         caller = x86.Call
     else:
-        assembly, closure = flatten(call.func)
-        get_func, func = flatten(ast.Call(
-            ast.Name('__get_fun_ptr', ast.Load()),
-            [closure],
-            []
-        ))
-        assembly += get_func
+        assembly, func = flatten(call.func)
         caller = x86.CallPtr
 
     args = []
@@ -248,7 +242,9 @@ def flatten_Dict(dct):
 
 
 def flatten_Closure(closure):
-    make_list, lst = flatten_List(ast.List([], ast.Load()))
+    make_list, lst = flatten_List(ast.List([
+        ast.Name(name, ast.Load()) for name in closure.free_vars
+    ], ast.Load()))
     create_closure, clsr = flatten(ext.Tag(ast.Call(
         ast.Name('__create_closure', ast.Load()),
         # [ext.Const(1), ext.Const(2)],
