@@ -45,6 +45,8 @@ typedef struct hashtable* dict;
 struct fun_struct {
   void* function_ptr;
   pyobj free_vars;
+  size_t nargs;
+  int variadic;
 };
 typedef struct fun_struct function;
 
@@ -98,6 +100,7 @@ int is_object(pyobj val);
 int is_class(pyobj val);
 int is_unbound_method(pyobj val);
 int is_bound_method(pyobj val);
+int is_variadic(pyobj val);
 
 pyobj inject_int(int i);
 pyobj inject_bool(int b);
@@ -114,6 +117,8 @@ void print_any(pyobj p);
 pyobj input_int();
 
 big_pyobj* create_list(pyobj length);
+pyobj list_size(pyobj list);
+
 big_pyobj* create_dict();
 pyobj set_subscript(pyobj c, pyobj key, pyobj val);
 pyobj get_subscript(pyobj c, pyobj key);
@@ -122,10 +127,12 @@ big_pyobj* add(big_pyobj* a, big_pyobj* b);
 int equal(big_pyobj* a, big_pyobj* b);
 int not_equal(big_pyobj* x, big_pyobj* y);
 
-big_pyobj* create_closure(void* fun_ptr, pyobj free_vars);
+big_pyobj* create_closure(void* fun_ptr, pyobj free_vars, pyobj nargs, pyobj variadic);
 void* get_fun_ptr(pyobj);
 pyobj get_free_vars(pyobj);
 big_pyobj* set_free_vars(big_pyobj* b, pyobj free_vars);
+pyobj get_nargs(pyobj func);
+
 
 big_pyobj* create_class(pyobj bases); /* bases should be a list of classes */
 big_pyobj* create_object(pyobj cl);

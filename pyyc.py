@@ -65,13 +65,14 @@ def modify_attr(name, func):
 
 pycompile = call_in_succession(
     ast.parse,
+    # partial(astor.dump_tree, indentation='  ')
     Uniqifier().visit,
     # astor.to_source,
     Explicator().visit,
     heapify_free_vars,
     # partial(astor.dump_tree, indentation='  ')
     convert_closures,
-    modify_index(1, lambda funcs: (call_in_succession(
+    modify_index(1, lambda funcs: [call_in_succession(
         # print_function,
         modify_attr('body', call_in_succession(
             partial(map, flatten),
@@ -81,7 +82,7 @@ pycompile = call_in_succession(
             modify_index(0, remove_useless_moves)
         )),
         wrap_function
-    )(f) for f in funcs)),
+    )(f) for f in funcs]),
     join_program
 )
 

@@ -28,6 +28,8 @@ class LocalFreeVarFinder(ast.NodeVisitor):
 
     def visit_Lambda(self, lda):
         self.p_vars |= set((a.arg for a in lda.args.args))
+        if lda.args.vararg:
+            self.p_vars.add(lda.args.vararg.arg)
         self.generic_visit(lda)
 
     def visit_Name(self, name):
@@ -77,6 +79,9 @@ class Heapifier(ast.NodeTransformer):
         for arg in lda.args.args:
             if arg.arg in free_params:
                 arg.arg = self.heapified_param_name(arg.arg)
+
+        if lda.args.vararg in self.free_vars:
+            free_params.append(lda.args.vararg)
 
         lda.body = [
             ast.Assign(

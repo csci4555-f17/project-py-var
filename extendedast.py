@@ -44,7 +44,9 @@ Return = ExAstNode('Return', ['value', 'func_name'])
 Function = ExAstNode('Function', ['name', 'args', 'body'])
 
 
-class Closure(ExAstNode('Closure', ['func', 'free_vars'])):
+class Closure(
+    ExAstNode('Closure', ['func', 'free_vars', 'nargs', 'variadic'])
+):
     def __repr__(self):
         return "{}<>".format(self.func, ', '.join(map(str, self.free_vars)))
 

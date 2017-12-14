@@ -14,7 +14,7 @@ class Explicator(ast.NodeTransformer):
     def visit_Module(self, module):
         module = self.generic_visit(module)
         return ast.copy_location(ast.Module([ast.Call(ast.Lambda(
-            ast.arguments([], ast.arg(), [], ast.arg(), [], []),
+            ast.arguments([], None, [], None, [], []),
             module.body
         ), [], [])]), module)
 

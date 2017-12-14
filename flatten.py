@@ -55,7 +55,16 @@ def flatten_Call(call):
         assembly, func = flatten(call.func)
         caller = x86.CallPtr
 
-    args = []
+    argass, argstmp = flatten(ast.List([], ast.Load()))
+    assembly.extend(argass)
+    for arg in call.args:
+        argass, a2tmp = flatten(ast.List([arg], ast.Load()))
+        assembly.extend(argass)
+        argass, argstmp = flatten(ast.Assign(argstmp, ast.BinOp(
+            argstmp, ast.Add(), a2tmp
+        )))
+        assembly.extend(argass)
+
     for stmts, tmp in (flatten(a) for a in call.args):
         assembly.extend(stmts)
         args.append(tmp)
@@ -179,9 +188,11 @@ def flatten_Tag(tag):
 
     assembly, tmp = flatten(tag.expr)
     if isinstance(tmp, ext.Const):
+        value = tmp.value
         if not tag.tag == C.T_BIG:
-            tmp.value = tmp.value << C.TAG_SHIFT
-        tmp.value |= tag.tag
+            value = tmp.value << C.TAG_SHIFT
+        value |= tag.tag
+        tmp = ext.Const(value)
     else:
         tex, tmp = tmp, _free_var(fname='sett')
         assembly.append(x86.Mov(tex, tmp))
@@ -248,10 +259,12 @@ def flatten_Closure(closure):
         ast.Name(name, ast.Load()) for name in closure.free_vars
     ], ast.Load()))
     create_closure, clsr = flatten(ext.Tag(ast.Call(
-        ast.Name('__create_closure', ast.Load()),
-        # [ext.Const(1), ext.Const(2)],
-        [ext.Const(closure.func), lst],
-        []
+        ast.Name('__create_closure', ast.Load()), [
+            ext.Const(closure.func),
+            lst,
+            ext.Tag(ext.Const(closure.nargs), C.T_INT),
+            ext.Tag(ext.Const(closure.variadic), C.T_BOOL)
+        ], []
     ), C.T_BIG))
     return make_list + create_closure, clsr
 

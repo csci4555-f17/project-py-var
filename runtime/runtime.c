@@ -56,6 +56,13 @@ int is_bound_method(pyobj val) {
   return is_big(val) && (project_big(val)->tag == BMETHOD);
 }
 
+int is_variadic(pyobj val) {
+  if (is_big(val)) {
+    big_pyobj* obj = project_big(val);
+    return (obj->tag == FUN) && (obj->u.f.variadic);
+  }
+}
+
 /*
   Injecting into pyobj.
 */
@@ -222,6 +229,12 @@ static int list_equal(list x, list y)
     return eq;
   else
     return 0;
+}
+
+pyobj list_size(pyobj list) {
+  big_pyobj* obj = project_big(list);
+  assert(obj->tag == LIST);
+  return inject_int(obj->u.l.len);
 }
 
 
@@ -764,13 +777,14 @@ static big_pyobj* closure_to_big(function f) {
   return v;
 }
 
-big_pyobj* create_closure(void* fun_ptr, pyobj free_vars) {
+big_pyobj* create_closure(void* fun_ptr, pyobj free_vars, pyobj nargs, pyobj variadic) {
   function f;
   f.function_ptr = fun_ptr;
   f.free_vars = free_vars;
+  f.nargs = project_int(nargs);
+  f.variadic = project_bool(variadic);
   return closure_to_big(f);
 }
-
 
 
 void* get_fun_ptr(pyobj p) {
@@ -789,6 +803,12 @@ big_pyobj* set_free_vars(big_pyobj* b, pyobj free_vars) {
   assert(b->tag == FUN);
   b->u.f.free_vars = free_vars;
   return b;
+}
+
+pyobj get_nargs(pyobj func) {
+  big_pyobj* b = project_big(func);
+  assert(b->tag == FUN);
+  return inject_int(b->u.f.nargs);
 }
 
 /* Support for Objects and Classes */

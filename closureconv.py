@@ -52,8 +52,8 @@ def _blockify(node, name):
     node, blocks = convert_default(node)
 
     node.body = _tag_returns(node.body, name)
-    args = getattr(node, 'args', None)
-    args = ['fvs'] + ([] if not args else [a.arg for a in args.args])
+    aargs = getattr(node, 'args', None)
+    args = ['fvs'] + ([] if not aargs else [a.arg for a in aargs.args])
     fvs = getattr(node, 'free_vars', set())
     newBody = [
         ast.Assign(
@@ -67,7 +67,7 @@ def _blockify(node, name):
         for i, fv in enumerate(fvs)
     ] + node.body
     return (
-        ext.Closure(name, fvs),
+        ext.Closure(name, fvs, len(args), bool(aargs and aargs.vararg)),
         [ast.copy_location(ext.Function(name, args, newBody), node)] + blocks
     )
 
