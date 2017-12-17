@@ -11,10 +11,15 @@ bash -c "rm -rf $TEST_EXEC_DIR"
 bash -c "rm -rf $TEST_OUT_DIR/*"
 bash -c "rm -rf $EXP_OUT_DIR/*"
 
-bash compile_tests.sh > /dev/null
-bash generate_expected_outputs.sh > /dev/null
+bash compile_tests.sh $@ > /dev/null
+bash generate_expected_outputs.sh $@ > /dev/null
 
 for test in `ls $TEST_EXEC_DIR`; do
+
+  if [[ $# -ne 0 && " $@" != *" ${test%.py}"* ]]; then
+    continue
+  fi
+
 
   for test_file in `ls $INPUT_DIR/$test`; do
 

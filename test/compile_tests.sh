@@ -10,6 +10,10 @@ mkdir -p "$ASSEMBLY_DIR" "$EXECUTABLE_DIR"
 
 for test in `ls $TEST_SCRIPT_DIR`; do
 
+  if [[ $# -ne 0 && " $@" != *" ${test%.py}"* ]]; then
+    continue
+  fi
+
   test="${test%.py}"
 
   ../pyyc "$TEST_SCRIPT_DIR/$test.py" -o "$ASSEMBLY_DIR/$test.s"

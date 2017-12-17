@@ -13,7 +13,7 @@ from heapify import heapify_free_vars
 from closureconv import convert_closures
 from flatten import flatten
 from alloc import allocate_memory
-from remcf import remove_ifs
+from remcf import remove_ctrl_flow
 from optimize import remove_useless_moves
 from defunctioning import wrap_function
 
@@ -77,8 +77,9 @@ pycompile = call_in_succession(
         modify_attr('body', call_in_succession(
             partial(map, flatten),
             lambda lists: [s for stmts, _ in lists for s in stmts],
+            # modify_index(0, print_x86ir),
             lambda stmts: allocate_memory(stmts, f.args),
-            modify_index(0, remove_ifs),
+            modify_index(0, remove_ctrl_flow),
             modify_index(0, remove_useless_moves)
         )),
         wrap_function

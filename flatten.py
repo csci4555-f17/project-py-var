@@ -55,16 +55,21 @@ def flatten_Call(call):
         assembly, func = flatten(call.func)
         caller = x86.CallPtr
 
-    argass, argstmp = flatten(ast.List([], ast.Load()))
-    assembly.extend(argass)
-    for arg in call.args:
-        argass, a2tmp = flatten(ast.List([arg], ast.Load()))
-        assembly.extend(argass)
-        argass, argstmp = flatten(ast.Assign(argstmp, ast.BinOp(
-            argstmp, ast.Add(), a2tmp
-        )))
-        assembly.extend(argass)
+    # argass, argstmp = flatten(ast.List([], ast.Load()))
+    # assembly.extend(argass)
+    # for arg in call.args:
+    #     argass, a2tmp = flatten(ast.List([arg], ast.Load()))
+    #     assembly.extend(argass)
+    #     argass, argstmp = flatten(ast.Assign(argstmp, ast.BinOp(
+    #         argstmp, ast.Add(), a2tmp
+    #     )))
+    #     assembly.extend(argass)
+    #
+    # for stmts, tmp in (flatten(a) for a in call.args):
+    #     assembly.extend(stmts)
+    #     args.append(tmp)
 
+    args = []
     for stmts, tmp in (flatten(a) for a in call.args):
         assembly.extend(stmts)
         args.append(tmp)
@@ -138,13 +143,33 @@ def flatten_CmpEq(ceq):
         return flatten(
             ext.UnTag(ast.NameConstant(ceq.negated != eq), C.T_BOOL)
         )
-    elif isinstance(tr, ext.Const):
+    elif isinstance(tl, ext.Const):
         tl, tr = tr, tl
 
     tuns = _free_var(fname='ceq', max_color=C.N_REGS_8)
     return left + right + [
-        x86.Cmp(tl, tr),
+        x86.Cmp(tr, tl),
         (x86.Setne if ceq.negated else x86.Sete)(tuns),
+        x86.And(ext.Const(0b1), tuns)
+    ], tuns
+
+
+def flatten_CmpLt(clt):
+    left, tl = flatten(clt.left)
+    right, tr = flatten(clt.right)
+
+    if isinstance(tl, ext.Const) and isinstance(tr, ext.Const):
+        lt = (tl.value < tr.value)
+        return flatten(
+            ext.UnTag(ast.NameConstant(clt.negated != lt), C.T_BOOL)
+        )
+    elif isinstance(tl, ext.Const):
+        tl, tr = tr, tl
+
+    tuns = _free_var(fname='clt', max_color=C.N_REGS_8)
+    return left + right + [
+        x86.Cmp(tr, tl),
+        (x86.Setnl if clt.negated else x86.Setl)(tuns),
         x86.And(ext.Const(0b1), tuns)
     ], tuns
 
@@ -164,6 +189,17 @@ def flatten_IfExp(ifexp):
     assembly.append(x86.If(tt, abody, aorelse))
 
     return assembly, tret
+
+
+def flatten_While(whl):
+    atest, tt = flatten(whl.test)
+    if isinstance(tt, ext.Const) and not tt.value:
+        return [], tt
+    assembly, tb = [], ext.Const(0)
+    for stmt in whl.body:
+        asm, tb = flatten(stmt)
+        assembly += asm
+    return [x86.While(atest, tt, assembly)], tb
 
 
 def flatten_Subscript(subs):

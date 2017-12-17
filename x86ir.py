@@ -61,6 +61,7 @@ def X86Op(op, reg_modifier=None, read_args=None, written_args=None):
 
 
 If = namedtuple('If', ['test', 'body', 'orelse'])
+While = namedtuple('While', ['tasm', 'test', 'body'])
 
 
 class Directive(namedtuple('Directive', ['name', 'args'])):
@@ -92,6 +93,10 @@ Sete = X86Op('sete', reg_modifier=(lambda r: r[1] + 'l'), written_args=[0])
 Setne = X86Op('setne', reg_modifier=(lambda r: r[1] + 'l'),
               written_args=[0])
 
+Setl = X86Op('setl', reg_modifier=(lambda r: r[1] + 'l'), written_args=[0])
+Setnl = X86Op('setnl', reg_modifier=(lambda r: r[1] + 'l'),
+              written_args=[0])
+
 Call = X86Op('call', read_args=[0])
 
 
@@ -119,10 +124,22 @@ def dump(statements):
                 {}
                 else:
                 {}
-            """).lstrip().rstrip().format(
+            """).strip().format(
                 s.test,
                 textwrap.indent(dump(s.body), '    ').rstrip(),
                 textwrap.indent(dump(s.orelse), '    ')
+            )
+        elif isinstance(s, While):
+            text += textwrap.dedent("""
+                while:
+                {}
+                test {}
+                do:
+                {}
+            """).strip().format(
+                textwrap.indent(dump(s.tasm), '    ').rstrip(),
+                s.test,
+                textwrap.indent(dump(s.body), '    ')
             )
         else:
             text += "{}\n".format(repr(s))

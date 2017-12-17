@@ -57,3 +57,8 @@ class Closure(
 class CmpEq(ExAstNode('CmpEq', ['left', 'right', 'negated'])):
     def __init__(self, left, right, negated=False):
         super().__init__(left, right, negated)
+
+
+class CmpLt(ExAstNode('CmpLt', ['left', 'right', 'negated'])):
+    def __init__(self, left, right, negated=False):
+        super().__init__(left, right, negated)

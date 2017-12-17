@@ -8,6 +8,10 @@ EXP_OUT_DIR='expected_outputs'
 
 for test in `ls $TEST_SCRIPT_DIR`; do
 
+  if [[ $# -ne 0 && " $@" != *" ${test%.py}"* ]]; then
+    continue
+  fi
+
   test="${test%.py}"
 
   for test_file in `ls $INPUT_DIR/$test`; do

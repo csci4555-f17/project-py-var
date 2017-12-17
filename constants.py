@@ -4,9 +4,14 @@ import extendedast as ext
 
 from extendedast import BuiltinFunction
 
+
+DEBUG_WITHOUT_EXPLICATE = False
+
+
 BUILTIN_FUNCS = {
     'print': BuiltinFunction('print_any', returns=False),
     'input': BuiltinFunction('input_int', returns=True),
+    'len': BuiltinFunction('list_size', returns=True),
     '__add': BuiltinFunction('add', returns=True),
     '__is_true': BuiltinFunction('is_true', returns=True),
     '__equal': BuiltinFunction('equal', returns=True),
@@ -48,6 +53,8 @@ INSTANTIATING_INSTRUCTIONS = (
     x86.Mov,
     x86.Sete,
     x86.Setne,
+    x86.Setl,
+    x86.Setnl,
     x86.Pop
 )
 

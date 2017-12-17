@@ -39,6 +39,22 @@ def try_transform(statements, colors):
                 continue  # avoid returning
             return statements, False
 
+        elif isinstance(s, x86.While):
+
+            tcol = colors.get(s.test, NOT_MEM)
+            test = s.test if tcol is NOT_MEM else get_mem(tcol)
+
+            tasm, t_success = try_transform(s.tasm, colors)
+            body, b_success = try_transform(s.body, colors)
+            if not t_success:
+                statements[i] = x86.While(tasm, s.test, s.body)
+            elif not b_success:
+                statements[i] = x86.While(s.tasm, s.test, body)
+            else:
+                new_statements.append(x86.While(tasm, test, body))
+                continue  # avoid returning
+            return statements, False
+
         else:
             arg_colors = [colors.get(a, NOT_MEM) for a in s.args]
             if sum((n < -1 or n >= C.N_REGS) for n in arg_colors) >= 2:
@@ -133,7 +149,9 @@ def best_color(name, colors, graph):
 
 def interference_graph(statements):
     graph = defaultdict(set)
+    # print("##########################")
     for stmt, l_after in iter_livenesses(statements):
+        # print("{:40.40}".format(str(stmt)), l_after)
         if isinstance(stmt, C.INSTANTIATING_INSTRUCTIONS):
             add_interferences(
                 graph, stmt.written_args(), l_after - set(stmt.args)
@@ -143,6 +161,7 @@ def interference_graph(statements):
         elif isinstance(stmt, C.MODIFYING_INSTRUCTIONS):
             wargs = stmt.written_args()
             add_interferences(graph, wargs, l_after - wargs)
+    # print("############################")
     return graph
 
 
@@ -160,9 +179,81 @@ def iter_livenesses(statements, l_after=None):
             l_after = la_body | la_orelse
             if isinstance(stmt.test, ext.Name):
                 l_after.add(stmt.test)
+        elif isinstance(stmt, x86.While):
+            # print("====")
+            # print(l_after)
+            for st, l_after in while_livenesses(stmt, l_after):
+                # print(st, l_after)
+                yield st, l_after
+            liveness_step_before(l_after, st)
+            # print("====")
         else:
-            l_after -= stmt.written_args()
-            l_after |= stmt.read_args()
+            liveness_step_before(l_after, stmt)
+
+
+def while_livenesses(whl, l_after):
+
+    # Consider the program points:
+    # > l_before
+    # whl.tasm
+    # > l_middle
+    # while (whl.test) {...}
+    # > l_after
+
+    # l_middle is the last liveness of while_live_helper(whl, l_after)
+
+    # print("::::::::::::::::::")
+    for stmt, l_after in while_live_helper(whl, l_after):
+        # if isinstance(stmt, x86.While):
+        #     print("{:.40}".format(str(stmt)), l_after)
+        yield stmt, l_after
+    for stmt, l_after in iter_livenesses(whl.tasm, l_after):
+        # print("{:.40}".format(str(stmt)), l_after)
+        yield stmt, l_after
+    # print("::::::::::::::::::")
+
+
+def while_live_helper(whl, l_after):
+
+    # Consider the program points
+    # > L0
+    # while (whl.test) {
+    # > L1
+    #   whl.body
+    # > L2
+    #   whl.tasm
+    # > L3
+    # }
+    # > l_after
+
+    # Note that:
+    # L0 = liveness_before(whl.test, L1 | l_after)
+    # L1 = liveness_before(whl.body, L2)
+    # L2 = liveness_before(whl.tasm, L3)
+    # L3 = L0
+
+    l0 = set(l_after) | set(
+        [whl.test] if isinstance(whl.test, ext.Name) else []
+    )
+    l3 = l0
+
+    l_test = [(s, set(li)) for s, li in iter_livenesses(whl.tasm, l3)]
+    l2 = set(l_test[-1][1])
+    liveness_step_before(l2, l_test[-1][0])
+
+    l_body = [(s, set(li)) for s, li in iter_livenesses(whl.body, l2)]
+    l1 = set(l_body[-1][1])
+    liveness_step_before(l1, l_body[-1][0])
+
+    l_after_new = l_after | l1
+    diff = l_after_new - l_after
+
+    return (while_live_helper(whl, l_after_new) if diff else (l_test + l_body))
+
+
+def liveness_step_before(l_after, inst):
+    l_after -= inst.written_args()
+    l_after |= inst.read_args()
 
 
 def add_interferences(graph, wargs, interfering):
