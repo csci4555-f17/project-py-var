@@ -4,7 +4,7 @@ import ast
 import textwrap
 from functools import partial
 
-import astor
+# import astor
 
 import x86ir as x86
 from uniqify import Uniqifier
@@ -30,6 +30,8 @@ def call_in_succession(*funcs):
 
 
 def print_function(f):
+    import astor
+    
     print(f.name, f.args)
     print('    ' + astor.dump_tree(f.body))
     print()
