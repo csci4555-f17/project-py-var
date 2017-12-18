@@ -9,6 +9,4 @@ Please make sure to include all your sources (e.g., LaTeX for your paper, code f
 Then, link your documents here:
 
 - [Proposal](proposal/proposal.md)
-- [Status Update](status-update/status-update.md)
-- [Presentation](presentation/presentation.pdf)
 - [Paper](paper/paper.pdf)
