@@ -777,11 +777,11 @@ static big_pyobj* closure_to_big(function f) {
   return v;
 }
 
-big_pyobj* create_closure(void* fun_ptr, pyobj free_vars, pyobj nargs, pyobj variadic) {
+big_pyobj* create_closure(void* fun_ptr, pyobj free_vars, pyobj nparams, pyobj variadic) {
   function f;
   f.function_ptr = fun_ptr;
   f.free_vars = free_vars;
-  f.nargs = project_int(nargs);
+  f.nparams = project_int(nparams);
   f.variadic = project_bool(variadic);
   return closure_to_big(f);
 }
@@ -805,10 +805,10 @@ big_pyobj* set_free_vars(big_pyobj* b, pyobj free_vars) {
   return b;
 }
 
-pyobj get_nargs(pyobj func) {
+pyobj get_nparams(pyobj func) {
   big_pyobj* b = project_big(func);
   assert(b->tag == FUN);
-  return inject_int(b->u.f.nargs);
+  return inject_int(b->u.f.nparams);
 }
 
 /* Support for Objects and Classes */

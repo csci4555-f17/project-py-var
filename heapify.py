@@ -80,8 +80,9 @@ class Heapifier(ast.NodeTransformer):
             if arg.arg in free_params:
                 arg.arg = self.heapified_param_name(arg.arg)
 
-        if lda.args.vararg in self.free_vars:
-            free_params.append(lda.args.vararg)
+        if lda.args.vararg and lda.args.vararg.arg in self.free_vars:
+            free_params.append(lda.args.vararg.arg)
+            lda.args.vararg.arg = self.heapified_param_name(lda.args.vararg.arg)
 
         lda.body = [
             ast.Assign(

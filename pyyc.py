@@ -30,7 +30,7 @@ def call_in_succession(*funcs):
 
 
 def print_function(f):
-    print(f.name)
+    print(f.name, f.args)
     print('    ' + astor.dump_tree(f.body))
     print()
     return f
@@ -70,7 +70,6 @@ pycompile = call_in_succession(
     # astor.to_source,
     Explicator().visit,
     heapify_free_vars,
-    # partial(astor.dump_tree, indentation='  ')
     convert_closures,
     modify_index(1, lambda funcs: [call_in_succession(
         # print_function,

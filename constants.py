@@ -23,7 +23,7 @@ BUILTIN_FUNCS = {
     '__create_closure': BuiltinFunction('create_closure', returns=True),
     '__get_fun_ptr': BuiltinFunction('get_fun_ptr', returns=True),
     '__get_free_vars': BuiltinFunction('get_free_vars', returns=True),
-    '__get_nargs': BuiltinFunction('get_nargs', returns=True),
+    '__get_nparams': BuiltinFunction('get_nparams', returns=True),
     '__is_variadic': BuiltinFunction('is_variadic', returns=True),
     '__abort': BuiltinFunction('abort', returns=False)
 }

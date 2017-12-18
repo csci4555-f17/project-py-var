@@ -45,7 +45,7 @@ typedef struct hashtable* dict;
 struct fun_struct {
   void* function_ptr;
   pyobj free_vars;
-  size_t nargs;
+  size_t nparams;
   int variadic;
 };
 typedef struct fun_struct function;
@@ -127,11 +127,11 @@ big_pyobj* add(big_pyobj* a, big_pyobj* b);
 int equal(big_pyobj* a, big_pyobj* b);
 int not_equal(big_pyobj* x, big_pyobj* y);
 
-big_pyobj* create_closure(void* fun_ptr, pyobj free_vars, pyobj nargs, pyobj variadic);
+big_pyobj* create_closure(void* fun_ptr, pyobj free_vars, pyobj nparams, pyobj variadic);
 void* get_fun_ptr(pyobj);
 pyobj get_free_vars(pyobj);
 big_pyobj* set_free_vars(big_pyobj* b, pyobj free_vars);
-pyobj get_nargs(pyobj func);
+pyobj get_nparams(pyobj func);
 
 
 big_pyobj* create_class(pyobj bases); /* bases should be a list of classes */

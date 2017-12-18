@@ -52,9 +52,11 @@ class Uniqifier(ast.NodeTransformer):
         return self._to_scoped_name(name, self._scoped_id(name))
 
     def _push_name(self, name):
-        new_id = self._new_id(
-            self._scoped_id(name) if self._stack[name] else 0
-        )
+        try:
+            sid = self._scoped_id(name)
+        except KeyError:
+            sid = 0
+        new_id = self._new_id(sid)
         self._stack[name].append(new_id)
         return self._to_scoped_name(name, new_id)
 

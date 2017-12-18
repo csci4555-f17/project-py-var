@@ -51,7 +51,11 @@ def _blockify(node, name):
 
     node.body = _tag_returns(node.body, name)
     aargs = getattr(node, 'args', None)
-    args = ['fvs'] + ([] if not aargs else [a.arg for a in aargs.args])
+    is_vdic = bool(aargs and aargs.vararg)
+    args = ['fvs'] + ((
+        [a.arg for a in aargs.args]
+        + ([aargs.vararg.arg] if aargs.vararg else [])
+    ) if aargs else [])
     fvs = getattr(node, 'free_vars', set())
     newBody = [
         ast.Assign(
@@ -65,7 +69,7 @@ def _blockify(node, name):
         for i, fv in enumerate(fvs)
     ] + node.body
     return (
-        ext.Closure(name, fvs, len(args) + 1, bool(aargs and aargs.vararg)),
+        ext.Closure(name, fvs, len(args) - is_vdic, is_vdic),
         [ast.copy_location(ext.Function(name, args, newBody), node)] + blocks
     )
 

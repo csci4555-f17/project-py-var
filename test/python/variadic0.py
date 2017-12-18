@@ -3,4 +3,8 @@ def list(*args):
     return args
 
 
-print(list(1, 2, 3))
+i = 0
+lst = list(1, 2, 3)
+while i < len(lst):
+    print(lst[i])
+    i = i + 1
