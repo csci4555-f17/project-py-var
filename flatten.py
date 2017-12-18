@@ -5,10 +5,13 @@ import ast
 import constants as C
 import extendedast as ext
 import x86ir as x86
+from explicate import test_truthy
 from defunctioning import return_label
 
 
 def flatten(node):
+    if isinstance(node, x86.X86Instruction):
+        return [node], node.args[-1]
     fname = 'flatten_{}'.format(node.__class__.__name__)
     func = globals().get(fname, flatten_error)
     return func(node)
@@ -23,7 +26,7 @@ def flatten(node):
 def flatten_Assign(assign):
     assembly, tmp = flatten(assign.value)
     for target in assign.targets:
-        if isinstance(target, ast.Name):
+        if isinstance(target, (ast.Name, ext.Name)):
             assembly.append(x86.Mov(tmp, ext.Name(target.id)))
         elif isinstance(target, ast.Subscript):
             assembly.extend(flatten(ast.Call(
@@ -50,39 +53,103 @@ def flatten_Call(call):
     if isinstance(call.func, ast.Name) and call.func.id in C.BUILTIN_FUNCS:
         func = C.BUILTIN_FUNCS[call.func.id].id
         assembly = []
-        caller = x86.Call
+
+        args = []
+        for stmts, tmp in (flatten(a) for a in call.args):
+            assembly.extend(stmts)
+            args.append(tmp)
+
+        assembly.extend(x86.Push(a) for a in reversed(args))
+
+        assembly.append(x86.Call(func))
+        if args:
+            assembly.append(x86.Add(ext.Const(4*len(args)), ext.Reg('esp')))
+
     else:
-        assembly, func = flatten(call.func)
-        caller = x86.CallPtr
+        assembly = [x86.Add(ext.Const(0), ext.Reg('esi'))]
+        asmcls, closure = flatten(call.func)
+        assembly += asmcls
 
-    # argass, argstmp = flatten(ast.List([], ast.Load()))
-    # assembly.extend(argass)
-    # for arg in call.args:
-    #     argass, a2tmp = flatten(ast.List([arg], ast.Load()))
-    #     assembly.extend(argass)
-    #     argass, argstmp = flatten(ast.Assign(argstmp, ast.BinOp(
-    #         argstmp, ast.Add(), a2tmp
-    #     )))
-    #     assembly.extend(argass)
-    #
-    # for stmts, tmp in (flatten(a) for a in call.args):
-    #     assembly.extend(stmts)
-    #     args.append(tmp)
+        asmfunc, func = flatten(
+            ast.Call(ast.Name('__get_fun_ptr', ast.Load()), [closure], [])
+        )
+        assembly += asmfunc
 
-    args = []
-    for stmts, tmp in (flatten(a) for a in call.args):
-        assembly.extend(stmts)
-        args.append(tmp)
+        call.args = (
+            [ast.Call(ast.Name('__get_free_vars', ast.Load()), [closure], [])]
+            + call.args
+        )
+
+        # starargs = [a.value for a in call.args if isinstance(a, ast.Starred)]
+        # minargs = len(call.args) - len(starargs)
+        #
+        # n_args = _free_var('expn')
+        # assembly.append(x86.Mov(ext.ConstInt(minargs), n_args))
+        # for arg in starargs:
+        #     for stmts, tmp in flatten(ast.Call('len', [arg], [])):
+        #         assembly += stmts
+        #         assembly.append(x86.Add(tmp, n_args))
+
+        asmnargs, nargs = flatten(ast.Call(
+            ast.Name('__get_nargs', ast.Load()), [closure], []
+        ))
+        asmargs, argl = flatten(ext.Tag(ast.Call(
+            ast.Name('__create_list', ast.Load()), [nargs], []
+        ), C.T_BIG))
+        assembly += asmnargs + asmargs
+
+        itr = _free_var()
+        assembly += flatten(ast.Assign([itr], C.AST_CONST_0))[0]
+
+        for arg in call.args:
+            if isinstance(arg, ast.Starred):
+                asmarg, arg = flatten(arg.value)
+                assembly += asmarg
+
+                i2 = _free_var()
+                assembly += flatten(ast.Assign([i2], C.AST_CONST_0))[0]
+
+                asmmax, maxi2 = flatten(
+                    ast.Call(ast.Name('len', ast.Load()), [arg], [])
+                )
+                assembly += asmmax
+
+                assembly += flatten(ast.While(ext.CmpLt(i2, maxi2), [
+                    ast.Assign(
+                        [ast.Subscript(argl, ast.Index(itr), ast.Store())],
+                        ast.Subscript(arg, ast.Index(i2), ast.Load())
+                    ),
+                    ext.Inc(itr),
+                    ext.Inc(i2)
+                ], []))[0]
+
+            else:
+                asmass, _ = flatten(ast.Assign(
+                    [ast.Subscript(argl, ast.Index(itr), ast.Store())], arg
+                ))
+                asmitr, _ = flatten(ext.Inc(itr))
+                assembly += asmass + asmitr
+
+        tmp = _free_var()
+        asmpush, _ = flatten(ast.While(ext.CmpLt(C.AST_CONST_0, itr), [
+            ext.Dec(itr),
+            ast.Assign(
+                [tmp],
+                ast.Subscript(argl, ast.Index(itr), ast.Load())
+            ),
+            x86.Push(tmp)  # mixing x86 and AST!
+        ], []))
+        assembly += asmpush
+
+        assembly += [
+            x86.CallPtr(func),
+            # nargs is a tagged int, meaning that since T_INT = 0b00,
+            # nargs = 4 * n_args_untagged. Thus we can do the trick below:
+            x86.Add(nargs, ext.Reg('esp'))
+        ]
 
     # print(func, args)
 
-    assembly.extend(x86.Push(a) for a in reversed(args))
-
-    assembly.append(caller(func))
-    if args:
-        assembly.append(x86.Add(ext.Const(4*len(args)), ext.Reg('esp')))
-
-    tmp = ext.Const(0)
     # if f.returns:
     tmp = _free_var(fname='call')
     assembly.append(x86.Mov(ext.Reg('eax'), tmp))
@@ -114,6 +181,27 @@ def flatten_BinOp(bop):
         ], res
     else:
         return flatten_error(bop)
+
+
+def flatten_Inc(inc):
+    return [x86.Add(ext.Const(0b100), inc.value)], inc.value
+    # return flatten(ast.Assign([inc.value], ext.Tag(ast.BinOp(
+    #     ext.UnTag(inc.value, C.T_INT),
+    #     ast.Add(),
+    #     ext.Const(1)
+    # ), C.T_INT)))
+
+
+def flatten_Dec(dec):
+    return [x86.Add(
+        ext.Const((-1 << C.TAG_SHIFT) | C.T_INT),
+        dec.value
+    )], dec.value
+    # return flatten(ast.Assign([dec.value], ext.Tag(ast.BinOp(
+    #     ext.UnTag(dec.value, C.T_INT),
+    #     ast.Add(),
+    #     ext.Const(-1)
+    # ), C.T_INT)))
 
 
 def flatten_BoolOp(bop):
@@ -165,11 +253,14 @@ def flatten_CmpLt(clt):
         )
     elif isinstance(tl, ext.Const):
         tl, tr = tr, tl
+        ops = (x86.Setg, x86.Setng)
+    else:
+        ops = (x86.Setl, x86.Setnl)
 
     tuns = _free_var(fname='clt', max_color=C.N_REGS_8)
     return left + right + [
         x86.Cmp(tr, tl),
-        (x86.Setnl if clt.negated else x86.Setl)(tuns),
+        ops[clt.negated](tuns),
         x86.And(ext.Const(0b1), tuns)
     ], tuns
 
@@ -274,7 +365,7 @@ def flatten_List(lst):
     ), C.T_BIG))
     for i, e in enumerate(lst.elts):
         assembly.extend(flatten(ast.Assign(
-            [ast.Subscript(tret, ast.Index(ast.Num(i)), ast.Load())], e
+            [ast.Subscript(tret, ast.Index(ast.Num(i)), ast.Store())], e
         ))[0])
     return assembly, tret
 
@@ -285,7 +376,7 @@ def flatten_Dict(dct):
     ), C.T_BIG))
     for k, v in zip(dct.keys, dct.values):
         assembly.extend(flatten(ast.Assign(
-            [ast.Subscript(tret, ast.Index(k), ast.Load())], v
+            [ast.Subscript(tret, ast.Index(k), ast.Store())], v
         ))[0])
     return assembly, tret
 

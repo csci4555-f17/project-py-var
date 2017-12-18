@@ -2,8 +2,6 @@
 import ast
 import extendedast as ext
 
-from constants import BUILTIN_FUNCS
-
 
 def convert_closures(node):
     fname = 'convert_{}'.format(node.__class__.__name__)
@@ -19,19 +17,19 @@ def convert_Lambda(lba):
     return _blockify(lba, _new_function())
 
 
-def convert_Call(call):
-    call, functions = convert_default(call)
-    if isinstance(call.func, ast.Name) and call.func.id in BUILTIN_FUNCS:
-        return call, functions
-
-    tmp = _free_var()
-    return ast.copy_location(ext.Let(tmp, call.func, ast.Call(
-        ast.Call(ast.Name('__get_fun_ptr', ast.Load()), [tmp], []),
-        [ast.Call(
-            ast.Name('__get_free_vars', ast.Load()), [tmp], []
-        )] + call.args,
-        []
-    )), call), functions
+# def convert_Call(call):
+#     call, functions = convert_default(call)
+#     if isinstance(call.func, ast.Name) and call.func.id in BUILTIN_FUNCS:
+#         return call, functions
+#
+#     tmp = _free_var()
+#     return ast.copy_location(ext.Let(tmp, call.func, ast.Call(
+#         ast.Call(ast.Name('__get_fun_ptr', ast.Load()), [tmp], []),
+#         [ast.Call(
+#             ast.Name('__get_free_vars', ast.Load()), [tmp], []
+#         )] + call.args,
+#         []
+#     )), call), functions
 
 
 def convert_default(node):
@@ -67,7 +65,7 @@ def _blockify(node, name):
         for i, fv in enumerate(fvs)
     ] + node.body
     return (
-        ext.Closure(name, fvs, len(args), bool(aargs and aargs.vararg)),
+        ext.Closure(name, fvs, len(args) + 1, bool(aargs and aargs.vararg)),
         [ast.copy_location(ext.Function(name, args, newBody), node)] + blocks
     )
 

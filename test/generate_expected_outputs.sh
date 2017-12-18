@@ -22,9 +22,7 @@ for test in `ls $TEST_SCRIPT_DIR`; do
 
     mkdir -p "$EXP_OUT_DIR/$test"
 
-    cmd="python2.7 '$TEST_SCRIPT_DIR/$test.py' < '$INPUT_DIR/$test_loc' > '$EXP_OUT_DIR/$test_loc'"
-
-    bash -c "$cmd"
+    python <(cat "$TEST_SCRIPT_DIR/$test.py" | sed -re 's/input( *)\(( *)\)/int(input\1(\2))/g') < "$INPUT_DIR/$test_loc" > "$EXP_OUT_DIR/$test_loc"
 
   done
 

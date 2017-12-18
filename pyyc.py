@@ -31,7 +31,7 @@ def call_in_succession(*funcs):
 
 def print_function(f):
     print(f.name)
-    print(astor.dump_tree(f.body))
+    print('    ' + astor.dump_tree(f.body))
     print()
     return f
 
@@ -77,7 +77,6 @@ pycompile = call_in_succession(
         modify_attr('body', call_in_succession(
             partial(map, flatten),
             lambda lists: [s for stmts, _ in lists for s in stmts],
-            # modify_index(0, print_x86ir),
             lambda stmts: allocate_memory(stmts, f.args),
             modify_index(0, remove_ctrl_flow),
             modify_index(0, remove_useless_moves)

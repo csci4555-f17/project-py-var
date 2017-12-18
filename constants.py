@@ -23,6 +23,8 @@ BUILTIN_FUNCS = {
     '__create_closure': BuiltinFunction('create_closure', returns=True),
     '__get_fun_ptr': BuiltinFunction('get_fun_ptr', returns=True),
     '__get_free_vars': BuiltinFunction('get_free_vars', returns=True),
+    '__get_nargs': BuiltinFunction('get_nargs', returns=True),
+    '__is_variadic': BuiltinFunction('is_variadic', returns=True),
     '__abort': BuiltinFunction('abort', returns=False)
 }
 
@@ -41,6 +43,16 @@ AST_T_INT = ext.Const(T_INT)
 AST_T_BOOL = ext.Const(T_BOOL)
 AST_T_BIG = ext.Const(T_BIG)
 
+AST_CONST_0 = ext.Tag(ext.Const(0), T_INT)
+
+
+def ConstInt(n):
+    return ext.Const((n << 2) | T_INT)
+
+
+def ConstBool(n):
+    return ext.Const((n << 2) | T_BOOL)
+
 
 CSAVE_REGS = set(ext.Reg(r) for r in ("eax", "ecx", "edx"))  # caller save
 REGS = [ext.Reg(r) for r in ("eax", "ebx", "ecx", "edx", "esi", "edi")]
@@ -51,10 +63,7 @@ N_REGS_8 = 4
 
 INSTANTIATING_INSTRUCTIONS = (
     x86.Mov,
-    x86.Sete,
-    x86.Setne,
-    x86.Setl,
-    x86.Setnl,
+    *x86.CmpResult.comparators,
     x86.Pop
 )
 

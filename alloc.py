@@ -61,7 +61,8 @@ def try_transform(statements, colors):
                 # handle multi-spilling (x86 only allows 1 mem-access / instr.)
                 tmp = _new_unspillable()
                 spill_index = next(
-                    i for i, n in enumerate(arg_colors) if n >= C.N_REGS
+                    i for i, n in enumerate(arg_colors)
+                    if n < NOT_MEM or n >= C.N_REGS
                 )
 
                 # old_s = repr(s)

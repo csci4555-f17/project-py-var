@@ -89,13 +89,25 @@ Cmp = X86Op('cmpl', read_args=[0, 1])
 Jmp = X86Op('jmp', read_args=[0])
 Je = X86Op('je', read_args=[0])
 
-Sete = X86Op('sete', reg_modifier=(lambda r: r[1] + 'l'), written_args=[0])
-Setne = X86Op('setne', reg_modifier=(lambda r: r[1] + 'l'),
-              written_args=[0])
 
-Setl = X86Op('setl', reg_modifier=(lambda r: r[1] + 'l'), written_args=[0])
-Setnl = X86Op('setnl', reg_modifier=(lambda r: r[1] + 'l'),
-              written_args=[0])
+def CmpResult(cmp):
+    CmpResult.comparators.append(X86Op(
+        'set' + cmp,
+        reg_modifier=(lambda r: r[1] + 'l'),
+        written_args=[0]
+    ))
+    return CmpResult.comparators[-1]
+
+
+CmpResult.comparators = []
+
+
+Sete = CmpResult('e')
+Setne = CmpResult('ne')
+Setl = CmpResult('l')
+Setnl = CmpResult('nl')
+Setg = CmpResult('g')
+Setng = CmpResult('gl')
 
 Call = X86Op('call', read_args=[0])
 

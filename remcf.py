@@ -1,5 +1,6 @@
 
 import x86ir as x86
+import constants as C
 
 
 def remove_ctrl_flow(stmts):
@@ -20,7 +21,7 @@ def remove_if(s):
     lbl_else, lbl_end = _free_if_labels()
 
     stmts = [
-        x86.Cmp("$0", s.test),
+        x86.Cmp(C.ConstInt(0), s.test),
         x86.Je(lbl_else)
     ]
 
