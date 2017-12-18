@@ -31,7 +31,7 @@ def call_in_succession(*funcs):
 
 def print_function(f):
     import astor
-    
+
     print(f.name, f.args)
     print('    ' + astor.dump_tree(f.body))
     print()
