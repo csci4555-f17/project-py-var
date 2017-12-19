@@ -6,7 +6,7 @@ Follow the course discussion about final projects. Then, commit updates to your 
 
 Please make sure to include all your sources (e.g., LaTeX for your paper, code for your project, Keynote for your presentation) but also readily readable versions (e.g., Markdown for your proposal, PDF for your paper and presentation). Please do not submit Word files without an accompanying PDF.
 
-Then, link your documents here:
 
 - [Proposal](proposal/proposal.md)
 - [Paper](paper/paper.pdf)
+- Also, OUR CODE WORKS! Try running test/test after recompiling the runtime (cd runtime; make).
